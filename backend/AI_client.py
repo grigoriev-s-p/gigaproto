@@ -3,9 +3,7 @@ from google.genai import types
 import requests
 
 def ask_openrouter(prompt: str) -> str:
-
-    API_KEY = "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"
-
+    API_KEY = "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"
 
     response = requests.post(
         "https://openrouter.ai/api/v1/chat/completions",
@@ -18,10 +16,21 @@ def ask_openrouter(prompt: str) -> str:
             "messages": [
                 {"role": "user", "content": prompt}
             ]
-        }
+        },
+        timeout=60
     )
+    try:
+        data = response.json()
+    except Exception:
+        return f"Ошибка: сервер вернул не JSON.\nОтвет:\n{response.text}"
 
-    return response.json()["choices"][0]["message"]["content"]
+    if "choices" not in data:
+        return f"Ошибка OpenRouter:\n{data}"
+
+    try:
+        return data["choices"][0]["message"]["content"]
+    except Exception as e:
+        return f"Ошибка чтения ответа OpenRouter: {e}\nПолный ответ:\n{data}"
 
 def ask_gemini(prompt:str, _temperature=0.2, _top_p=0.9, _top_k=40, _system_prompt="")->str:
     client = genai.Client(api_key="AIzaSyD0B9vR7VjQ5shYDossCwwhYv2insdKfT0")
