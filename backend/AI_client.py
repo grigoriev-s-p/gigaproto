@@ -6,7 +6,7 @@ import os
 import requests
 
 def ask_openrouter(prompt: str) -> str:
-    API_KEY = "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"
+    API_KEY = "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"
     response = requests.post(
         "https://openrouter.ai/api/v1/chat/completions",
         headers={
