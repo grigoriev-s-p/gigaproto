@@ -1,5 +1,5 @@
 import { Paperclip, SendHorizonal, X } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ChangeEvent, type KeyboardEvent } from 'react';
 import type { AttachmentItem } from '../../app/types';
 
 interface PromptInputProps {
@@ -71,7 +71,7 @@ export function PromptInput({
           className="visually-hidden"
           type="file"
           multiple
-          onChange={(event) => {
+          onChange={(event: ChangeEvent<HTMLInputElement>) => {
             onAttach(event.target.files);
             event.currentTarget.value = '';
           }}
@@ -82,9 +82,9 @@ export function PromptInput({
           className="composer-textarea"
           rows={1}
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event: ChangeEvent<HTMLTextAreaElement>) => onChange(event.target.value)}
           placeholder="Опиши бизнес-идею"
-          onKeyDown={(event) => {
+          onKeyDown={(event: KeyboardEvent<HTMLTextAreaElement>) => {
             if (event.key === 'Enter' && !event.shiftKey) {
               event.preventDefault();
               onSend();

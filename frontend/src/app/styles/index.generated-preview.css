@@ -1,0 +1,200 @@
+.generated-preview-meta-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.generated-preview-eyebrow {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+  margin-bottom: 4px;
+}
+
+.generated-preview-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.generated-preview-tab {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.generated-preview-tab.is-active {
+  background: rgba(122, 92, 255, 0.18);
+  border-color: rgba(122, 92, 255, 0.6);
+}
+
+.generated-app {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.generated-app__page-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 0 4px;
+}
+
+.generated-app__page-head h2 {
+  margin: 0;
+}
+
+.generated-app__page-head p,
+.generated-section__header p,
+.generated-section__text,
+.generated-card p {
+  opacity: 0.8;
+}
+
+.generated-app__route {
+  font-size: 12px;
+  opacity: 0.6;
+  margin-bottom: 6px;
+}
+
+.generated-app__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.generated-section {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.generated-section--hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.generated-section__header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.generated-section__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.generated-section__title h3,
+.generated-card h4 {
+  margin: 0;
+}
+
+.generated-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.generated-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.generated-field input,
+.generated-field textarea,
+.generated-field select {
+  width: 100%;
+  border-radius: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(10, 12, 22, 0.5);
+  color: inherit;
+}
+
+.generated-table-wrap {
+  overflow-x: auto;
+}
+
+.generated-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.generated-table th,
+.generated-table td {
+  text-align: left;
+  padding: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.generated-bullets {
+  display: grid;
+  gap: 10px;
+  padding-left: 18px;
+  margin: 0;
+}
+
+.generated-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.generated-card {
+  border-radius: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.generated-meta-row,
+.generated-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.generated-meta-chip {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+}
+
+.generated-button {
+  border: none;
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.generated-button--primary {
+  background: linear-gradient(135deg, #6d5efc, #8c70ff);
+  color: white;
+}
+
+.generated-button--secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+}
+
+.generated-footer-panel {
+  margin-top: 2px;
+}

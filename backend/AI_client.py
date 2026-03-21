@@ -1,31 +1,40 @@
-API_KEY = "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"
-
 import os
 import requests
 
+OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+DEFAULT_MODEL = "stepfun/step-3.5-flash:free"
 SESSION = requests.Session()
 
-def ask_openrouter(prompt: str) -> str:
-    if not API_KEY:
+
+def ask_openrouter(prompt: str, model: str | None = None, temperature: float = 0.1) -> str:
+    api_key = "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"
+    if not api_key:
         raise ValueError("OPENROUTER_API_KEY не найден в переменных окружения")
 
     response = SESSION.post(
-        "https://openrouter.ai/api/v1/chat/completions",
+        OPENROUTER_API_URL,
         headers={
-            "Authorization": f"Bearer {API_KEY}",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         },
         json={
-            "model": "stepfun/step-3.5-flash:free",
+            "model": model or DEFAULT_MODEL,
             "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.1
+            "temperature": temperature,
         },
         timeout=90,
     )
 
-    response.raise_for_status()
-    data = response.json()
+    try:
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        try:
+            details = response.json()
+        except Exception:
+            details = response.text
+        raise ValueError(f"Ошибка OpenRouter: {details}") from exc
 
+    data = response.json()
     choices = data.get("choices", [])
     if not choices:
         raise ValueError(f"OpenRouter не вернул choices: {data}")
@@ -37,12 +46,11 @@ def ask_openrouter(prompt: str) -> str:
 
     if finish_reason == "length":
         raise ValueError(
-            f"Модель обрезала ответ по лимиту токенов. "
-            f"finish_reason=length. "
-            f"Начало ответа: {repr((content or '')[:500])}"
+            "Модель обрезала ответ по лимиту токенов. "
+            f"finish_reason=length. Начало ответа: {repr((content or '')[:500])}"
         )
 
-    if content:
+    if isinstance(content, str) and content.strip():
         return content
 
     raise ValueError(

@@ -1,182 +1,159 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { AttachmentItem, ChatMessage, PreviewVariant, ThemeMode } from './types';
-import { TopBar } from '../widgets/TopBar/TopBar';
-import { PreviewPanel } from '../widgets/PreviewPanel/PreviewPanel';
-import { ChatPanel } from '../widgets/ChatPanel/ChatPanel';
+import './styles/index.generated-preview.css';
+import { useMemo, useState } from 'react';
+import { ChatPanel } from '../components/ChatPanel/ChatPanel';
+import { PreviewPanel } from '../components/PreviewPanel/PreviewPanel';
+import { TopBar } from '../components/TopBar/TopBar';
+import type {
+  AttachmentItem,
+  ChatMessage,
+  GenerateResponse,
+  GeneratedPage,
+  GeneratedUiPreview,
+  ThemeMode,
+} from './types';
 
-const STORAGE_KEY = 'gigaproto-theme';
+const API_URL = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.VITE_API_URL ?? 'http://127.0.0.1:8000';
 
-const initialMessages: ChatMessage[] = [
-  {
-    id: 'system-welcome',
-    role: 'system',
-    text: 'Опиши бизнес-идею, прикрепи файл или изображение, а я соберу структуру интерфейса и варианты визуала.',
-    createdAt: currentTime()
-  }
-];
+function formatNow(): string {
+  return new Date().toLocaleTimeString('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function formatSize(file: File): string {
+  const kb = file.size / 1024;
+  if (kb < 1024) return `${Math.max(1, Math.round(kb))} KB`;
+  return `${(kb / 1024).toFixed(1)} MB`;
+}
+
+function toAttachmentItems(files: FileList | null): AttachmentItem[] {
+  if (!files) return [];
+
+  return Array.from(files).map((file) => ({
+    id: crypto.randomUUID(),
+    file,
+    name: file.name,
+    sizeLabel: formatSize(file),
+  }));
+}
+
+function summarizePreview(preview: GeneratedUiPreview): string {
+  const pageNames = preview.pages.map((page) => page.name).join(', ');
+  return `UI готов: ${preview.pages.length} стр. (${pageNames}).`;
+}
+
+function firstPage(preview: GeneratedUiPreview | null): GeneratedPage | undefined {
+  return preview?.pages?.[0];
+}
 
 export function App() {
-  const [theme, setTheme] = useState<ThemeMode>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved === 'light' || saved === 'dark' ? saved : 'dark';
-  });
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
-  const [variants, setVariants] = useState<PreviewVariant[]>([]);
-  const [activeVariantId, setActiveVariantId] = useState<string>('');
+  const [theme, setTheme] = useState<ThemeMode>('dark');
   const [draft, setDraft] = useState('');
   const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isThinking, setIsThinking] = useState(false);
-  const timerRef = useRef<number | null>(null);
+  const [preview, setPreview] = useState<GeneratedUiPreview | null>(null);
+  const [activePageId, setActivePageId] = useState<string | undefined>(undefined);
 
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    localStorage.setItem(STORAGE_KEY, theme);
-  }, [theme]);
+  const activePage = useMemo(() => {
+    if (!preview) return undefined;
+    return preview.pages.find((page: GeneratedPage) => page.id === activePageId) ?? firstPage(preview);
+  }, [preview, activePageId]);
 
-  useEffect(() => {
-    return () => {
-      if (timerRef.current !== null) {
-        window.clearTimeout(timerRef.current);
-      }
-    };
-  }, []);
-
-  const activeVariant = useMemo(
-    () => variants.find((item) => item.id === activeVariantId) ?? variants[0],
-    [activeVariantId, variants]
-  );
-
-  const handleThemeToggle = () => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
-  };
-
-  const handleAttach = (files: FileList | null) => {
-    if (!files?.length) {
-      return;
-    }
-
-    const nextItems = Array.from(files).map((file) => ({
-      id: `${file.name}-${file.lastModified}`,
-      name: file.name,
-      sizeLabel: toSizeLabel(file.size),
-      file
-    }));
-
-    setAttachments((prev) => [...prev, ...nextItems]);
-  };
-
-  const handleRemoveAttachment = (id: string) => {
-    setAttachments((prev) => prev.filter((item) => item.id !== id));
-  };
-
-  const handleSend = async () => {
-    const text = draft.trim();
-
-    if (!text && attachments.length === 0) {
+  async function handleSend() {
+    const trimmed = draft.trim();
+    if (!trimmed && attachments.length === 0) {
       return;
     }
 
     const nextUserMessage: ChatMessage = {
-      id: `user-${Date.now()}`,
+      id: crypto.randomUUID(),
       role: 'user',
-      text: text || 'Пользователь прикрепил файл без текста.',
-      createdAt: currentTime(),
-      attachments: attachments.length ? attachments : undefined
+      text: trimmed || 'Прикреплены файлы без текста',
+      createdAt: formatNow(),
+      attachments,
     };
 
-    setMessages((prev) => [...prev, nextUserMessage]);
+    setMessages((prev: ChatMessage[]) => [...prev, nextUserMessage]);
     setDraft('');
     setIsThinking(true);
 
     try {
       const formData = new FormData();
-      formData.append('prompt', text);
+      formData.append('prompt', trimmed);
+      attachments.forEach((item) => formData.append('files', item.file));
 
-      attachments.forEach((item) => {
-        formData.append('files', item.file);
-      });
-
-      const response = await fetch('http://127.0.0.1:8000/generate', {
+      const response = await fetch(`${API_URL}/generate`, {
         method: 'POST',
-        body: formData
+        body: formData,
       });
 
-      const data = await response.json();
+      const payload = (await response.json()) as GenerateResponse;
 
-      if (!response.ok) {
-        throw new Error(data?.answer || data?.detail || 'Ошибка сервера');
+      if (!response.ok || !payload.ok || !payload.data) {
+        throw new Error(payload.error || 'Сервер вернул некорректный ответ');
       }
 
-      const botMessage: ChatMessage = {
-        id: `agent-${Date.now()}`,
+      setPreview(payload.data.ui_preview);
+      setActivePageId(payload.data.ui_preview.pages[0]?.id);
+
+      const nextAgentMessage: ChatMessage = {
+        id: crypto.randomUUID(),
         role: 'agent',
-        text: data.answer ?? 'Пустой ответ от сервера',
-        createdAt: currentTime()
+        text: {
+          message: summarizePreview(payload.data.ui_preview),
+          requirements: payload.data.requirements,
+          ui_schema: payload.data.ui_schema,
+        },
+        createdAt: formatNow(),
       };
 
-      setMessages((prev) => [...prev, botMessage]);
+      setMessages((prev: ChatMessage[]) => [...prev, nextAgentMessage]);
       setAttachments([]);
     } catch (error) {
-      const errorMessage: ChatMessage = {
-        id: `agent-error-${Date.now()}`,
-        role: 'agent',
-        text: error instanceof Error ? error.message : 'Ошибка запроса к серверу',
-        createdAt: currentTime()
+      const nextErrorMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'system',
+        text: error instanceof Error ? error.message : 'Не удалось получить ответ от сервера',
+        createdAt: formatNow(),
       };
-
-      setMessages((prev) => [...prev, errorMessage]);
+      setMessages((prev: ChatMessage[]) => [...prev, nextErrorMessage]);
     } finally {
       setIsThinking(false);
     }
-  };  
+  }
 
   return (
-    <div className="app-shell">
-      <TopBar theme={theme} onToggleTheme={handleThemeToggle} />
+    <div className={`app-shell theme-${theme}`}>
+      <TopBar
+        theme={theme}
+        onToggleTheme={() => setTheme((prev: ThemeMode) => (prev === 'dark' ? 'light' : 'dark'))}
+      />
 
       <main className="workspace-grid">
-        <section className="visual-column">
-          <PreviewPanel
-            hasConversation={messages.length > 1}
-            isThinking={isThinking}
-            variants={variants}
-            activeVariant={activeVariant}
-            onSelectVariant={setActiveVariantId}
-          />
-        </section>
+        <ChatPanel
+          messages={messages}
+          draft={draft}
+          attachments={attachments}
+          isThinking={isThinking}
+          onDraftChange={setDraft}
+          onAttach={(files) => setAttachments((prev: AttachmentItem[]) => [...prev, ...toAttachmentItems(files)])}
+          onRemoveAttachment={(id: string) =>
+            setAttachments((prev: AttachmentItem[]) =>
+              prev.filter((attachment: AttachmentItem) => attachment.id !== id)
+            )
+          }
+          onSend={handleSend}
+        />
 
-        <aside className="chat-column">
-          <ChatPanel
-            messages={messages}
-            draft={draft}
-            attachments={attachments}
-            isThinking={isThinking}
-            onDraftChange={setDraft}
-            onAttach={handleAttach}
-            onRemoveAttachment={handleRemoveAttachment}
-            onSend={handleSend}
-          />
-        </aside>
+        <PreviewPanel
+          preview={preview}
+          isThinking={isThinking}
+          activePage={activePage}
+          onSelectPage={setActivePageId}
+        />
       </main>
     </div>
   );
-}
-
-function currentTime(): string {
-  return new Date().toLocaleTimeString('ru-RU', {
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}
-
-function toSizeLabel(size: number): string {
-  if (size >= 1024 * 1024) {
-    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-  }
-
-  if (size >= 1024) {
-    return `${Math.round(size / 1024)} KB`;
-  }
-
-  return `${size} B`;
 }
