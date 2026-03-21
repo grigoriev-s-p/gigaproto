@@ -1,3 +1,96 @@
+.app-shell {
+  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.75fr) minmax(320px, 0.95fr);
+  gap: 18px;
+  overflow: hidden;
+}
+
+.workspace-pane {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+}
+
+.workspace-pane--preview {
+  order: 1;
+}
+
+.workspace-pane--chat {
+  order: 2;
+}
+
+.chat-panel,
+.preview-stack,
+.preview-empty {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.chat-panel,
+.preview-stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-panel {
+  overflow: hidden;
+}
+
+.chat-scroll-area {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 6px;
+}
+
+.prompt-composer {
+  flex-shrink: 0;
+}
+
+.preview-stack {
+  gap: 16px;
+}
+
+.preview-empty {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow-y: auto;
+}
+
+.preview-meta-bar,
+.generated-footer-panel {
+  flex-shrink: 0;
+}
+
+.browser-frame {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.browser-frame__content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: auto;
+  overscroll-behavior: contain;
+  padding-right: 6px;
+}
+
 .generated-preview-meta-bar {
   display: flex;
   flex-direction: column;
@@ -197,4 +290,23 @@
 
 .generated-footer-panel {
   margin-top: 2px;
+}
+
+@media (max-width: 1100px) {
+  .workspace-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1.15fr) minmax(340px, 0.85fr);
+  }
+
+  .workspace-pane--preview,
+  .workspace-pane--chat {
+    order: initial;
+  }
+}
+
+@media (max-width: 760px) {
+  .generated-section--hero,
+  .generated-app__page-head {
+    flex-direction: column;
+  }
 }

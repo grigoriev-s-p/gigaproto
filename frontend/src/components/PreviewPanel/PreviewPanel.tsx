@@ -74,7 +74,7 @@ function PreviewEmptyState({ isThinking }: { isThinking: boolean }) {
     <div className="preview-empty card-surface">
       <div className="preview-empty__hero preview-empty__hero--clean">
         <h2>Окно визуала</h2>
-        <p>После генерации справа появится интерфейс, собранный из ui_schema.</p>
+        <p>После генерации слева появится интерфейс, собранный из ui_schema.</p>
       </div>
 
       <div className="preview-empty__footer">

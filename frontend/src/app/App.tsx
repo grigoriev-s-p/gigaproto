@@ -132,27 +132,31 @@ export function App() {
       />
 
       <main className="workspace-grid">
-        <ChatPanel
-          messages={messages}
-          draft={draft}
-          attachments={attachments}
-          isThinking={isThinking}
-          onDraftChange={setDraft}
-          onAttach={(files) => setAttachments((prev: AttachmentItem[]) => [...prev, ...toAttachmentItems(files)])}
-          onRemoveAttachment={(id: string) =>
-            setAttachments((prev: AttachmentItem[]) =>
-              prev.filter((attachment: AttachmentItem) => attachment.id !== id)
-            )
-          }
-          onSend={handleSend}
-        />
+        <section className="workspace-pane workspace-pane--preview">
+          <PreviewPanel
+            preview={preview}
+            isThinking={isThinking}
+            activePage={activePage}
+            onSelectPage={setActivePageId}
+          />
+        </section>
 
-        <PreviewPanel
-          preview={preview}
-          isThinking={isThinking}
-          activePage={activePage}
-          onSelectPage={setActivePageId}
-        />
+        <aside className="workspace-pane workspace-pane--chat">
+          <ChatPanel
+            messages={messages}
+            draft={draft}
+            attachments={attachments}
+            isThinking={isThinking}
+            onDraftChange={setDraft}
+            onAttach={(files) => setAttachments((prev: AttachmentItem[]) => [...prev, ...toAttachmentItems(files)])}
+            onRemoveAttachment={(id: string) =>
+              setAttachments((prev: AttachmentItem[]) =>
+                prev.filter((attachment: AttachmentItem) => attachment.id !== id)
+              )
+            }
+            onSend={handleSend}
+          />
+        </aside>
       </main>
     </div>
   );
