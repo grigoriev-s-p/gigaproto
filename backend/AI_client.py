@@ -1,13 +1,15 @@
-from google import genai
-from google.genai import types
-from dotenv import load_dotenv
-from pathlib import Path
+API_KEY = "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"
+
 import os
 import requests
 
+SESSION = requests.Session()
+
 def ask_openrouter(prompt: str) -> str:
-    API_KEY = "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"
-    response = requests.post(
+    if not API_KEY:
+        raise ValueError("OPENROUTER_API_KEY не найден в переменных окружения")
+
+    response = SESSION.post(
         "https://openrouter.ai/api/v1/chat/completions",
         headers={
             "Authorization": f"Bearer {API_KEY}",
@@ -16,24 +18,33 @@ def ask_openrouter(prompt: str) -> str:
         json={
             "model": "stepfun/step-3.5-flash:free",
             "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.1
         },
-        timeout=60,
+        timeout=90,
     )
 
+    response.raise_for_status()
     data = response.json()
-    return data.get("choices", [{}])[0].get("message", {}).get("content") or str(data)
 
-def ask_gemini(prompt:str, _temperature=0.2, _top_p=0.9, _top_k=40, _system_prompt="")->str:
-    client = genai.Client(api_key="GEMINI_API_KEY")
+    choices = data.get("choices", [])
+    if not choices:
+        raise ValueError(f"OpenRouter не вернул choices: {data}")
 
-    response = client.models.generate_content(
-        model="gemini-3-flash-preview",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-        temperature=_temperature,
-        top_p=_top_p,
-        top_k=_top_k,
-        system_instruction=_system_prompt
+    choice = choices[0]
+    message = choice.get("message", {}) or {}
+    content = message.get("content")
+    finish_reason = choice.get("finish_reason")
+
+    if finish_reason == "length":
+        raise ValueError(
+            f"Модель обрезала ответ по лимиту токенов. "
+            f"finish_reason=length. "
+            f"Начало ответа: {repr((content or '')[:500])}"
         )
+
+    if content:
+        return content
+
+    raise ValueError(
+        f"Модель не вернула content. finish_reason={finish_reason}, response={data}"
     )
-    return response.text or ""

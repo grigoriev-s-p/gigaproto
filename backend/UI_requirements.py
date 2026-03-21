@@ -1,55 +1,50 @@
 import json
 import re
+import ast
 from typing import Any, Dict
 
 from AI_client import ask_openrouter
 
 
-def extract_json_from_text(text: str):
-    import re
+def extract_json_from_text(text: str) -> Dict[str, Any]:
     text = text.strip()
 
-    # убрать markdown
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
         text = re.sub(r"\s*```$", "", text)
 
-    # найти JSON
     start = text.find("{")
     end = text.rfind("}")
 
     if start == -1 or end == -1:
-        raise ValueError("JSON не найден")
+        raise ValueError(f"JSON не найден. Ответ модели:\n{text[:500]}")
 
     json_text = text[start:end + 1]
 
     try:
-        return json.loads(json_text)
-    except:
-        # fallback
-        json_text = json_text.replace("'", '"')
-        return json.loads(json_text)
+        data = json.loads(json_text)
+        if isinstance(data, dict):
+            return data
+    except Exception:
+        pass
+
+    try:
+        data = ast.literal_eval(json_text)
+        if isinstance(data, dict):
+            return data
+    except Exception:
+        pass
+
+    raise ValueError(f"Не удалось распарсить ui_schema. Фрагмент:\n{json_text[:500]}")
 
 
 def build_ui_schema_prompt(requirements: Dict[str, Any]) -> str:
     return f"""
-Ты — UI-дизайнер и системный аналитик.
+Сделай ui_schema JSON по requirements JSON.
 
-Твоя задача: по requirements JSON создать простой и понятный ui_schema JSON, который описывает структуру сайта.
+Верни только JSON без пояснений.
 
-ВАЖНО:
-- Верни ТОЛЬКО JSON
-- Без пояснений
-- Без markdown
-- Без ```json
-- Ответ должен начинаться с {{ и заканчиваться }}
-ЦЕЛЬ:
-Создать структуру сайта в виде:
-- страницы
-- элементы на страницах (кнопки, таблицы, формы и т.д.)
-- действия пользователя
-ФОРМАТ ОТВЕТА:
-
+Формат:
 {{
   "pages": [
     {{
@@ -58,7 +53,7 @@ def build_ui_schema_prompt(requirements: Dict[str, Any]) -> str:
       "route": "string",
       "elements": [
         {{
-          "type": "string",
+          "type": "button|input|form|table|list|card|filters|text|chart",
           "label": "string",
           "description": "string",
           "fields": ["string"],
@@ -71,61 +66,26 @@ def build_ui_schema_prompt(requirements: Dict[str, Any]) -> str:
     {{
       "id": "string",
       "label": "string",
-      "type": "navigate | submit | download | toggle | filter",
+      "type": "navigate|submit|download|toggle|filter",
       "target": "string"
     }}
   ]
 }}
-ПРАВИЛА:
 
-1. Каждая важная функция из requirements должна появиться:
-   → либо как элемент
-   → либо как action
-
-2. Используй типы элементов:
-- "button"
-- "input"
-- "form"
-- "table"
-- "list"
-- "card"
-- "filters"
-- "text"
-- "chart"
-
-3. ЛОГИКА:
-- если есть "история", "операции", "список" → table или list
-- если есть "фильтр" → filters
-- если есть "создать / изменить" → form + input
-- если есть "детали" → отдельная страница
-- если есть "экспорт / отчет" → button + action download
-- если есть "переключение / лимиты / блокировка" → toggle или button
-
-4. СТРАНИЦЫ:
-- создавай страницы только если это нужно
-- обычно:
-  - главная (dashboard)
-  - страницы под ключевые функции
-
-5. ACTIONS:
-- связывай кнопки с действиями через поле "action"
-- не дублируй одинаковые actions
-
-6. НЕ ДЕЛАЙ:
-- не добавляй лишние поля
-- не пиши текст вне JSON
-- не оставляй пустые массивы без смысла
+Правила:
+- каждая важная функция должна попасть либо в pages.elements, либо в actions
+- если есть список/история -> table или list
+- если есть фильтры -> filters
+- если есть детали -> отдельная страница
+- если есть экспорт -> button + download
+- не добавляй лишнего
 
 REQUIREMENTS:
-{json.dumps(requirements, ensure_ascii=False, indent=2)}
-
-ОТВЕТ:
-Верни только JSON.
+{json.dumps(requirements, ensure_ascii=False, separators=(",", ":"))}
 """
 
 
 def ui_schema_agent(requirements: Dict[str, Any]) -> Dict[str, Any]:
     prompt = build_ui_schema_prompt(requirements)
     raw_response = ask_openrouter(prompt)
-
     return extract_json_from_text(raw_response)

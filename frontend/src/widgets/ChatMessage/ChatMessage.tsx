@@ -4,7 +4,27 @@ interface ChatMessageProps {
   message: ChatMessageType;
 }
 
+function formatMessageText(value: unknown): string {
+  if (value == null) return '';
+
+  if (typeof value === 'string') return value;
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
 export function ChatMessage({ message }: ChatMessageProps) {
+  const rawText = (message as ChatMessageType & { text?: unknown }).text;
+  const text = formatMessageText(rawText);
+  const isStructured = typeof rawText === 'object' && rawText !== null;
+
   return (
     <article className={`message-bubble ${message.role}`}>
       <div className="message-bubble__meta">
@@ -18,7 +38,14 @@ export function ChatMessage({ message }: ChatMessageProps) {
         <span>{message.createdAt}</span>
       </div>
 
-      <p>{message.text}</p>
+      <p
+        style={{
+          whiteSpace: isStructured ? 'pre-wrap' : 'normal',
+          wordBreak: 'break-word',
+        }}
+      >
+        {text}
+      </p>
 
       {message.attachments && message.attachments.length > 0 ? (
         <div className="attachment-list">

@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from docx import Document
 
 from txt_agent import txt_agent
+from UI_requirements import ui_schema_agent
 
 app = FastAPI()
 
@@ -68,12 +69,10 @@ async def generate(
     combined_text = "\n\n".join(parts)
 
     try:
-        answer = txt_agent(combined_text)
-        return {"answer": answer}
+        requirements_json = txt_agent(combined_text)   # dict
+        ui_schema = ui_schema_agent(requirements_json) # dict
+        print("========")
+        print({"answer": ui_schema})
+        return {"answer": ui_schema}
     except Exception as e:
         return {"answer": f"Ошибка обработки файла: {str(e)}"}
-
-
-@app.get("/")
-def root():
-    return {"message": "Hello World"}
