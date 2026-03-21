@@ -3,7 +3,7 @@ from google.genai import types
 import requests
 
 def ask_openrouter(prompt: str) -> str:
-    API_KEY = "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"
+    API_KEY = "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"
 
     response = requests.post(
         "https://openrouter.ai/api/v1/chat/completions",

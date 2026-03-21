@@ -69,7 +69,7 @@ export function App() {
     setAttachments((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const text = draft.trim();
     if (!text && attachments.length === 0) {
       return;
@@ -89,14 +89,45 @@ export function App() {
     setAttachments([]);
     setIsThinking(true);
 
-    timerRef.current = window.setTimeout(() => {
-      const reply = buildAgentReply(text || 'Прикреплённый файл', nextMessages.length);
-      setMessages((prev) => [...prev, reply.message]);
-      setVariants(reply.variants);
-      setActiveVariantId(reply.variants[1]?.id ?? reply.variants[0]?.id ?? '');
+    try {
+      const response = await fetch("http://127.0.0.1:8000/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          prompt: text
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Ошибка сервера");
+      }
+
+      const data = await response.json();
+
+      const botMessage: ChatMessage = {
+        id: `agent-${Date.now()}`,
+        role: 'agent',
+        text: data.answer, // 👈 ВАЖНО
+        createdAt: currentTime()
+      };
+
+      setMessages((prev) => [...prev, botMessage]);
+
+    } catch (err) {
+      const errorMessage: ChatMessage = {
+        id: `error-${Date.now()}`,
+        role: 'agent',
+        text: "Ошибка запроса к серверу",
+        createdAt: currentTime()
+      };
+
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
       setIsThinking(false);
-    }, 950);
-  };
+    }
+  };  
 
   return (
     <div className="app-shell">
