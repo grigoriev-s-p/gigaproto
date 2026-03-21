@@ -2,11 +2,12 @@ export type ThemeMode = 'light' | 'dark';
 
 export type ChatRole = 'user' | 'agent' | 'system';
 
-export type AttachmentItem = {
+export interface AttachmentItem {
   id: string;
   name: string;
   sizeLabel: string;
-};
+  file: File;
+}
 
 export type ChatMessage = {
   id: string;

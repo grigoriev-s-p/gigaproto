@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AttachmentItem, ChatMessage, PreviewVariant, ThemeMode } from './types';
-import { buildAgentReply } from '../shared/lib/mockAgent';
 import { TopBar } from '../widgets/TopBar/TopBar';
 import { PreviewPanel } from '../widgets/PreviewPanel/PreviewPanel';
 import { ChatPanel } from '../widgets/ChatPanel/ChatPanel';
@@ -59,7 +58,8 @@ export function App() {
     const nextItems = Array.from(files).map((file) => ({
       id: `${file.name}-${file.lastModified}`,
       name: file.name,
-      sizeLabel: toSizeLabel(file.size)
+      sizeLabel: toSizeLabel(file.size),
+      file
     }));
 
     setAttachments((prev) => [...prev, ...nextItems]);
@@ -71,6 +71,7 @@ export function App() {
 
   const handleSend = async () => {
     const text = draft.trim();
+
     if (!text && attachments.length === 0) {
       return;
     }
@@ -83,43 +84,43 @@ export function App() {
       attachments: attachments.length ? attachments : undefined
     };
 
-    const nextMessages = [...messages, nextUserMessage];
-    setMessages(nextMessages);
+    setMessages((prev) => [...prev, nextUserMessage]);
     setDraft('');
-    setAttachments([]);
     setIsThinking(true);
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          prompt: text
-        })
+      const formData = new FormData();
+      formData.append('prompt', text);
+
+      attachments.forEach((item) => {
+        formData.append('files', item.file);
       });
 
-      if (!response.ok) {
-        throw new Error("Ошибка сервера");
-      }
+      const response = await fetch('http://127.0.0.1:8000/generate', {
+        method: 'POST',
+        body: formData
+      });
 
       const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.answer || data?.detail || 'Ошибка сервера');
+      }
 
       const botMessage: ChatMessage = {
         id: `agent-${Date.now()}`,
         role: 'agent',
-        text: data.answer, // 👈 ВАЖНО
+        text: data.answer ?? 'Пустой ответ от сервера',
         createdAt: currentTime()
       };
 
       setMessages((prev) => [...prev, botMessage]);
-
-    } catch (err) {
+      setAttachments([]);
+    } catch (error) {
       const errorMessage: ChatMessage = {
-        id: `error-${Date.now()}`,
+        id: `agent-error-${Date.now()}`,
         role: 'agent',
-        text: "Ошибка запроса к серверу",
+        text: error instanceof Error ? error.message : 'Ошибка запроса к серверу',
         createdAt: currentTime()
       };
 
