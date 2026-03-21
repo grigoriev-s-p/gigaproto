@@ -1,5 +1,5 @@
 import { Paperclip, SendHorizonal, X } from 'lucide-react';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import type { AttachmentItem } from '../../app/types';
 
 interface PromptInputProps {
@@ -12,6 +12,8 @@ interface PromptInputProps {
   onSend: () => void;
 }
 
+const MAX_TEXTAREA_HEIGHT = 184;
+
 export function PromptInput({
   value,
   attachments,
@@ -22,6 +24,19 @@ export function PromptInput({
   onSend
 }: PromptInputProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      return;
+    }
+
+    textarea.style.height = '46px';
+    const nextHeight = Math.min(textarea.scrollHeight, MAX_TEXTAREA_HEIGHT);
+    textarea.style.height = `${nextHeight}px`;
+    textarea.style.overflowY = textarea.scrollHeight > MAX_TEXTAREA_HEIGHT ? 'auto' : 'hidden';
+  }, [value]);
 
   return (
     <div className="prompt-composer card-surface">
@@ -63,11 +78,12 @@ export function PromptInput({
         />
 
         <textarea
+          ref={textareaRef}
           className="composer-textarea"
           rows={1}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          placeholder="Опиши бизнес-идею, нужные экраны, целевую аудиторию и что должен показать первый прототип…"
+          placeholder="Опиши бизнес-идею"
           onKeyDown={(event) => {
             if (event.key === 'Enter' && !event.shiftKey) {
               event.preventDefault();

@@ -202,7 +202,7 @@ button {
 
 .preview-empty {
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: 1fr auto;
   gap: 20px;
   padding: 28px;
 }
@@ -257,29 +257,10 @@ button {
   max-width: 780px;
 }
 
-.placeholder-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  align-content: center;
-}
-
-.placeholder-card {
+.preview-empty__hero--clean {
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-  gap: 8px;
-  min-height: 180px;
-  padding: 20px;
-  border-radius: 24px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent),
-    var(--panel-strong);
-  border: 1px solid var(--border);
-}
-
-.placeholder-card.tall {
-  min-height: 250px;
+  justify-content: center;
 }
 
 .placeholder-card span,
@@ -475,16 +456,8 @@ button {
   gap: 12px;
 }
 
-.header-status {
-  padding-inline: 12px;
-}
-
-.header-status__dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: #89cc43;
-  box-shadow: 0 0 0 5px rgba(137, 204, 67, 0.14);
+.chat-panel__header--single {
+  justify-content: flex-start;
 }
 
 .chat-hints {
@@ -606,8 +579,9 @@ button {
 
 .composer-textarea {
   min-height: 46px;
-  max-height: 160px;
-  resize: vertical;
+  max-height: 184px;
+  resize: none;
+  overflow-y: hidden;
   padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: 18px;

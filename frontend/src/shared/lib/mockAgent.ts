@@ -56,6 +56,7 @@ export function buildAgentReply(
   };
 }
 
+
 function buildVariants(prompt: string, focus: string): PreviewVariant[] {
   const idea = firstSentence(prompt);
 
@@ -153,10 +154,11 @@ function buildVariants(prompt: string, focus: string): PreviewVariant[] {
   ];
 }
 
+
 function capitalize(value: string): string {
   if (!value) {
     return value;
   }
 
   return value[0].toUpperCase() + value.slice(1);
-}
+} 

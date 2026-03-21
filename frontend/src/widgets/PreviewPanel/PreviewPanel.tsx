@@ -1,4 +1,4 @@
-import { ArrowRight, Clock3, Layers3, Sparkles } from 'lucide-react';
+import { ArrowRight, Layers3 } from 'lucide-react';
 import type { PreviewVariant } from '../../app/types';
 import { VariantTabs } from '../VariantTabs/VariantTabs';
 
@@ -24,9 +24,6 @@ export function PreviewPanel({
   return (
     <div className="preview-stack">
       <div className="preview-meta-bar card-surface">
-        <div className="meta-pill success">Активный режим: live preview</div>
-        <div className="meta-pill">Слева визуал · справа чат</div>
-        <div className="meta-pill">MVP frontend layout</div>
       </div>
 
       <div className="browser-frame card-surface">
@@ -36,13 +33,11 @@ export function PreviewPanel({
             <span />
             <span />
           </div>
-          <div className="browser-address">gigaproto.ai/workspace/preview</div>
         </div>
 
         <div className="browser-frame__content">
           <div className="preview-hero">
             <div>
-              <span className="eyebrow-badge">{activeVariant.badge}</span>
               <h2>{activeVariant.headline}</h2>
               <p>{activeVariant.subheadline}</p>
             </div>
@@ -95,31 +90,14 @@ export function PreviewPanel({
 function PreviewEmptyState({ isThinking }: { isThinking: boolean }) {
   return (
     <div className="preview-empty card-surface">
-      <div className="preview-empty__hero">
-        <span className="eyebrow-badge">Sber-style inspired workspace</span>
-        <h2>Окно визуала занимает 2/3 экрана и ждёт первую идею</h2>
+      <div className="preview-empty__hero preview-empty__hero--clean">
+        <h2>Окно визуала</h2>
         <p>
-          Как только пользователь отправит бизнес-идею, слева появятся варианты мини-сайта,
-          лендинга или рабочего интерфейса.
-        </p>
-      </div>
 
-      <div className="placeholder-grid">
-        <div className="placeholder-card tall">
-          <Sparkles size={18} />
-          <strong>Preview variant A</strong>
-          <span>Стартовый лендинг</span>
-        </div>
-        <div className="placeholder-card">
-          <Layers3 size={18} />
-          <strong>Preview variant B</strong>
-          <span>AI workspace</span>
-        </div>
-        <div className="placeholder-card">
-          <Clock3 size={18} />
-          <strong>Preview variant C</strong>
-          <span>Скоро здесь</span>
-        </div>
+
+
+
+        </p>
       </div>
 
       <div className="preview-empty__footer">

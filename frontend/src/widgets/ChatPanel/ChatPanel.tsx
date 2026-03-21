@@ -26,16 +26,8 @@ export function ChatPanel({
 }: ChatPanelProps) {
   return (
     <div className="chat-panel card-surface">
-      <div className="chat-panel__header">
-        <div>
-          <div className="panel-eyebrow">Диалог с системой</div>
-          <h2>Agent Chat</h2>
-        </div>
-
-        <div className="header-status">
-          <span className="header-status__dot" />
-          online
-        </div>
+      <div className="chat-panel__header chat-panel__header--single">
+        <h2>Chat</h2>
       </div>
 
       <div className="chat-hints">
