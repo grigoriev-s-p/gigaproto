@@ -1,24 +1,47 @@
 import './styles/index.generated-preview.css';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ChatPanel } from '../components/ChatPanel/ChatPanel';
 import { PreviewPanel } from '../components/PreviewPanel/PreviewPanel';
 import { TopBar } from '../components/TopBar/TopBar';
 import type {
   AttachmentItem,
   ChatMessage,
+  EditResponse,
   GenerateResponse,
   GeneratedPage,
   GeneratedUiPreview,
+  RecommendationItem,
   ThemeMode,
+  UiSchema,
 } from './types';
 
 const API_URL = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.VITE_API_URL ?? 'http://127.0.0.1:8000';
+const THEME_STORAGE_KEY = 'gigaproto-theme';
 
 function formatNow(): string {
   return new Date().toLocaleTimeString('ru-RU', {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function makeInitialMessages(): ChatMessage[] {
+  const createdAt = formatNow();
+
+  return [
+    {
+      id: crypto.randomUUID(),
+      role: 'agent',
+      text: 'Привет! Я помогу превратить бизнес-требования в UI, предложу улучшения и смогу править уже готовый прототип без его пересборки с нуля.',
+      createdAt,
+    },
+    {
+      id: crypto.randomUUID(),
+      role: 'system',
+      text: 'После первой генерации следующие сообщения считаются правками текущего UI. На мои рекомендации можно ответить «да, сделай так» — и я применю их к текущему прототипу.',
+      createdAt,
+    },
+  ];
 }
 
 function formatSize(file: File): string {
@@ -38,28 +61,209 @@ function toAttachmentItems(files: FileList | null): AttachmentItem[] {
   }));
 }
 
-function summarizePreview(preview: GeneratedUiPreview): string {
-  const pageNames = preview.pages.map((page) => page.name).join(', ');
-  return `UI готов: ${preview.pages.length} стр. (${pageNames}).`;
-}
-
 function firstPage(preview: GeneratedUiPreview | null): GeneratedPage | undefined {
   return preview?.pages?.[0];
 }
 
+function summarizePreview(preview: GeneratedUiPreview): string {
+  const firstPages = preview.pages.slice(0, 3).map((page) => page.name).join(', ');
+  const restCount = Math.max(preview.pages.length - 3, 0);
+  const designName = preview.app.design?.preset || 'авто-дизайн';
+  const restText = restCount > 0 ? ` и ещё ${restCount}` : '';
+
+  return `Готово: собрал ${preview.pages.length} экран(ов), добавил краткий демо-контент, включил кликабельные переходы между страницами и применил единый стиль прототипа (${designName}). Основные экраны: ${firstPages}${restText}.`;
+}
+
+function getInitialTheme(): ThemeMode {
+  if (typeof window === 'undefined') {
+    return 'dark';
+  }
+
+  const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+  return stored === 'light' ? 'light' : 'dark';
+}
+
+function normalizeRecommendationItem(item: RecommendationItem, index: number): string | null {
+  const title = String(item.title || '').trim();
+  const description = String(item.description || '').trim();
+
+  if (!title && !description) {
+    return null;
+  }
+
+  const safeTitle = title || `Идея ${index + 1}`;
+  return description ? `${index + 1}. ${safeTitle} — ${description}` : `${index + 1}. ${safeTitle}`;
+}
+
+function buildRecommendationText(recommendations: RecommendationItem[]): string {
+  const lines = recommendations
+    .map((item, index) => normalizeRecommendationItem(item, index))
+    .filter((item): item is string => Boolean(item))
+    .slice(0, 4);
+
+  if (!lines.length) {
+    return '';
+  }
+
+  return [
+    'Я проанализировал готовый UI и вот что можно улучшить:',
+    ...lines,
+    '',
+    'Если согласен, просто напиши: «да, сделай так». Если хочешь свои правки, они будут в приоритете над моими рекомендациями.',
+  ].join('\n');
+}
+
+function recommendationFingerprint(recommendations: RecommendationItem[]): string {
+  return JSON.stringify(
+    recommendations.map((item) => ({
+      title: String(item.title || '').trim(),
+      description: String(item.description || '').trim(),
+    })),
+  );
+}
+
 export function App() {
-  const [theme, setTheme] = useState<ThemeMode>('dark');
+  const [theme, setTheme] = useState<ThemeMode>(getInitialTheme);
   const [draft, setDraft] = useState('');
   const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => makeInitialMessages());
   const [isThinking, setIsThinking] = useState(false);
   const [preview, setPreview] = useState<GeneratedUiPreview | null>(null);
   const [activePageId, setActivePageId] = useState<string | undefined>(undefined);
+  const [requirements, setRequirements] = useState<Record<string, unknown> | null>(null);
+  const [uiSchema, setUiSchema] = useState<UiSchema | null>(null);
+  const [pendingRecommendations, setPendingRecommendations] = useState<RecommendationItem[]>([]);
+  const [lastRecommendationFingerprint, setLastRecommendationFingerprint] = useState('');
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.body.dataset.theme = theme;
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }, [theme]);
 
   const activePage = useMemo(() => {
     if (!preview) return undefined;
     return preview.pages.find((page: GeneratedPage) => page.id === activePageId) ?? firstPage(preview);
   }, [preview, activePageId]);
+
+  function applyProjectState(
+    nextRequirements: Record<string, unknown>,
+    nextUiSchema: UiSchema,
+    nextPreview: GeneratedUiPreview,
+  ) {
+    setRequirements(nextRequirements);
+    setUiSchema(nextUiSchema);
+    setPreview(nextPreview);
+    setActivePageId((prev) => {
+      const existing = nextPreview.pages.find((page) => page.id === prev);
+      return existing?.id ?? nextPreview.pages[0]?.id;
+    });
+  }
+
+  function pushRecommendationMessage(recommendations: RecommendationItem[]) {
+    const text = buildRecommendationText(recommendations);
+    const nextFingerprint = recommendationFingerprint(recommendations);
+
+    setPendingRecommendations(recommendations);
+    setLastRecommendationFingerprint(nextFingerprint);
+
+    if (!text || nextFingerprint === lastRecommendationFingerprint) {
+      return;
+    }
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        role: 'agent',
+        text,
+        createdAt: formatNow(),
+      },
+    ]);
+  }
+
+  function clearPendingRecommendations() {
+    setPendingRecommendations([]);
+    setLastRecommendationFingerprint('');
+  }
+
+  async function handleGenerate(trimmed: string) {
+    const formData = new FormData();
+    formData.append('prompt', trimmed);
+    attachments.forEach((item) => formData.append('files', item.file));
+
+    const response = await fetch(`${API_URL}/generate`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const payload = (await response.json()) as GenerateResponse;
+
+    if (!response.ok || !payload.ok || !payload.data) {
+      throw new Error(payload.error || 'Сервер вернул некорректный ответ');
+    }
+
+    applyProjectState(payload.data.requirements, payload.data.ui_schema, payload.data.ui_preview);
+
+    const nextAgentMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'agent',
+      text: summarizePreview(payload.data.ui_preview),
+      createdAt: formatNow(),
+    };
+
+    setMessages((prev: ChatMessage[]) => [...prev, nextAgentMessage]);
+    setAttachments([]);
+
+    const recommendations = payload.data.recommendations ?? [];
+    if (recommendations.length > 0) {
+      pushRecommendationMessage(recommendations);
+    } else {
+      clearPendingRecommendations();
+    }
+  }
+
+  async function handleEdit(trimmed: string) {
+    if (!preview || !requirements || !uiSchema) return;
+
+    const formData = new FormData();
+    formData.append('current_requirements', JSON.stringify(requirements));
+    formData.append('current_ui_schema', JSON.stringify(uiSchema));
+    formData.append('current_ui_preview', JSON.stringify(preview));
+    formData.append('user_edit', trimmed);
+    formData.append('pending_recommendations', JSON.stringify(pendingRecommendations));
+
+    const response = await fetch(`${API_URL}/edit`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const payload = (await response.json()) as EditResponse;
+
+    if (!response.ok || !payload.ok || !payload.data) {
+      throw new Error(payload.error || 'Сервер вернул некорректный ответ');
+    }
+
+    applyProjectState(payload.data.requirements, payload.data.ui_schema, payload.data.ui_preview);
+
+    const summaryText = payload.data.summary?.trim() || 'Готово: внёс правки в текущий прототип.';
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        role: 'agent',
+        text: summaryText,
+        createdAt: formatNow(),
+      },
+    ]);
+
+    const recommendations = payload.data.recommendations ?? [];
+    if (recommendations.length > 0) {
+      pushRecommendationMessage(recommendations);
+    } else {
+      clearPendingRecommendations();
+    }
+  }
 
   async function handleSend() {
     const trimmed = draft.trim();
@@ -80,37 +284,13 @@ export function App() {
     setIsThinking(true);
 
     try {
-      const formData = new FormData();
-      formData.append('prompt', trimmed);
-      attachments.forEach((item) => formData.append('files', item.file));
+      const shouldEdit = Boolean(preview && requirements && uiSchema) && attachments.length === 0 && Boolean(trimmed);
 
-      const response = await fetch(`${API_URL}/generate`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      const payload = (await response.json()) as GenerateResponse;
-
-      if (!response.ok || !payload.ok || !payload.data) {
-        throw new Error(payload.error || 'Сервер вернул некорректный ответ');
+      if (shouldEdit) {
+        await handleEdit(trimmed);
+      } else {
+        await handleGenerate(trimmed);
       }
-
-      setPreview(payload.data.ui_preview);
-      setActivePageId(payload.data.ui_preview.pages[0]?.id);
-
-      const nextAgentMessage: ChatMessage = {
-        id: crypto.randomUUID(),
-        role: 'agent',
-        text: {
-          message: summarizePreview(payload.data.ui_preview),
-          requirements: payload.data.requirements,
-          ui_schema: payload.data.ui_schema,
-        },
-        createdAt: formatNow(),
-      };
-
-      setMessages((prev: ChatMessage[]) => [...prev, nextAgentMessage]);
-      setAttachments([]);
     } catch (error) {
       const nextErrorMessage: ChatMessage = {
         id: crypto.randomUUID(),
@@ -125,7 +305,7 @@ export function App() {
   }
 
   return (
-    <div className={`app-shell theme-${theme}`}>
+    <div className="app-shell">
       <TopBar
         theme={theme}
         onToggleTheme={() => setTheme((prev: ThemeMode) => (prev === 'dark' ? 'light' : 'dark'))}

@@ -15,6 +15,29 @@ export interface ChatMessage {
   attachments?: AttachmentItem[];
 }
 
+export interface RecommendationItem {
+  title?: string;
+  description?: string;
+}
+
+export interface PreviewVariantSection {
+  id: string;
+  title: string;
+  description: string;
+  bullets: string[];
+}
+
+export interface PreviewVariant {
+  id: string;
+  name: string;
+  badge: string;
+  headline: string;
+  subheadline: string;
+  callToAction: string;
+  sections: PreviewVariantSection[];
+  notes?: string[];
+}
+
 export interface UiSchemaAction {
   id?: string;
   label: string;
@@ -83,12 +106,31 @@ export interface GeneratedPage {
   sections: GeneratedSection[];
 }
 
+export interface GeneratedDesign {
+  preset?: string;
+  mood?: string;
+  theme?: 'light' | 'dark' | string;
+  background?: string;
+  surface?: string;
+  surfaceAlt?: string;
+  text?: string;
+  mutedText?: string;
+  primary?: string;
+  primaryText?: string;
+  accent?: string;
+  border?: string;
+  shadow?: string;
+  radius?: number | string;
+}
+
 export interface GeneratedUiPreview {
   app: {
     title: string;
     subtitle?: string;
     theme?: 'light' | 'dark' | string;
     primaryAction?: string;
+    domain?: string;
+    design?: GeneratedDesign;
   };
   pages: GeneratedPage[];
 }
@@ -99,6 +141,21 @@ export interface GenerateResponse {
     requirements: Record<string, unknown>;
     ui_schema: UiSchema;
     ui_preview: GeneratedUiPreview;
+    recommendations?: RecommendationItem[];
+  };
+  error?: string;
+}
+
+export interface EditResponse {
+  ok: boolean;
+  data?: {
+    requirements: Record<string, unknown>;
+    ui_schema: UiSchema;
+    ui_preview: GeneratedUiPreview;
+    recommendations?: RecommendationItem[];
+    summary?: string;
+    applied_recommendations?: boolean;
+    dismissed_recommendations?: boolean;
   };
   error?: string;
 }

@@ -1,4 +1,4 @@
-import { Layers3 } from 'lucide-react';
+import { Layers3, Palette } from 'lucide-react';
 import type { GeneratedPage, GeneratedUiPreview } from '../../app/types';
 import { GeneratedPreview } from '../GeneratedPreview/GeneratedPreview';
 
@@ -40,7 +40,7 @@ export function PreviewPanel({ preview, isThinking, activePage, onSelectPage }: 
         </div>
       </div>
 
-      <div className="browser-frame card-surface">
+      <div className="browser-frame browser-frame--tall card-surface">
         <div className="browser-frame__chrome">
           <div className="browser-dots">
             <span />
@@ -50,7 +50,12 @@ export function PreviewPanel({ preview, isThinking, activePage, onSelectPage }: 
         </div>
 
         <div className="browser-frame__content">
-          <GeneratedPreview page={activePage} />
+          <GeneratedPreview
+            page={activePage}
+            pages={preview.pages}
+            design={preview.app.design}
+            onNavigate={onSelectPage}
+          />
         </div>
       </div>
 
@@ -63,6 +68,12 @@ export function PreviewPanel({ preview, isThinking, activePage, onSelectPage }: 
           <span className="soft-chip">Страниц: {preview.pages.length}</span>
           <span className="soft-chip">Активная: {activePage.name}</span>
           <span className="soft-chip">Секций: {activePage.sections.length}</span>
+          {preview.app.design?.preset ? (
+            <span className="soft-chip">
+              <Palette size={14} />
+              Стиль: {preview.app.design.preset}
+            </span>
+          ) : null}
         </div>
       </div>
     </div>
@@ -74,7 +85,7 @@ function PreviewEmptyState({ isThinking }: { isThinking: boolean }) {
     <div className="preview-empty card-surface">
       <div className="preview-empty__hero preview-empty__hero--clean">
         <h2>Окно визуала</h2>
-        <p>После генерации слева появится интерфейс, собранный из ui_schema.</p>
+        <p>После генерации слева появится прототип интерфейса с демо-контентом и рабочими переходами.</p>
       </div>
 
       <div className="preview-empty__footer">
