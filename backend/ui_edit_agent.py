@@ -91,6 +91,23 @@ EDIT_RESPONSE_EXAMPLE = {
     "summary": "Кратко перечисли внесённые правки.",
 }
 
+EDIT_PLAN_RESPONSE_EXAMPLE = {
+    "summary": "Глобально обновить кнопки и CTA на всех страницах, сохранить остальные экраны и структуру.",
+    "scope": "global",
+    "operations": ["style", "content", "navigation"],
+    "target_pages": ["Список карт", "История операций"],
+    "target_sections": ["hero:Список карт", "actions:Быстрые действия"],
+    "must_preserve": [
+        "Не удалять страницы, которые пользователь явно не просил удалять.",
+        "Сохранить существующие route и рабочие переходы между страницами."
+    ],
+    "instructions": [
+        "Обновить акцентные кнопки на всех релевантных страницах.",
+        "Если запрос про удаление, использовать _delete и отключать автогенерацию hero/navigation при необходимости.",
+        "Если запрос про перестановку, использовать sections_order или elements_order."
+    ],
+}
+
 
 REPLACE_MODES = {"replace", "set"}
 
@@ -148,6 +165,14 @@ def _schema_element_matches(left: Dict[str, Any], right: Dict[str, Any]) -> bool
     right_type = _normalized_name(right.get("type"))
     left_label = _normalized_name(left.get("label"))
     right_label = _normalized_name(right.get("label"))
+
+    if left_label and right_label and left_label == right_label:
+        return not left_type or not right_type or left_type == right_type
+
+    left_action = _normalized_name(left.get("action"))
+    right_action = _normalized_name(right.get("action"))
+    if left_action and right_action and left_action == right_action:
+        return not left_type or not right_type or left_type == right_type
 
     if left_type and right_type and left_label and right_label:
         return left_type == right_type and left_label == right_label
@@ -290,6 +315,150 @@ def _reorder_by_refs(items: List[Dict[str, Any]], refs: Any, ref_matcher) -> Lis
 
     ordered.extend(remaining)
     return ordered
+
+
+def _global_edit_requested(edit_request: str) -> bool:
+    lowered = _normalized_name(edit_request)
+    return any(token in lowered for token in [
+        "на всех страницах",
+        "на всех экранах",
+        "во всем приложении",
+        "во всём приложении",
+        "везде",
+        "для всех страниц",
+        "глобально",
+    ])
+
+
+def _style_edit_requested(edit_request: str) -> bool:
+    lowered = _normalized_name(edit_request)
+    return any(token in lowered for token in [
+        "цвет",
+        "тема",
+        "стиль",
+        "акцент",
+        "дизайн",
+        "кноп",
+        "фон",
+        "палитр",
+    ])
+
+
+def _delete_edit_requested(edit_request: str) -> bool:
+    lowered = _normalized_name(edit_request)
+    return any(token in lowered for token in [
+        "удали",
+        "убери",
+        "скрой",
+        "без ",
+        "не показывай",
+        "не отображай",
+    ])
+
+
+def _reorder_edit_requested(edit_request: str) -> bool:
+    lowered = _normalized_name(edit_request)
+    return any(token in lowered for token in [
+        "перемести",
+        "поменяй местами",
+        "сначала",
+        "выше",
+        "ниже",
+        "после",
+        "перед",
+        "порядок",
+    ])
+
+
+def _page_outline(current_ui_preview: Dict[str, Any], current_ui_schema: Dict[str, Any]) -> str:
+    preview_pages = current_ui_preview.get("pages") if isinstance(current_ui_preview.get("pages"), list) else []
+    schema_pages = current_ui_schema.get("pages") if isinstance(current_ui_schema.get("pages"), list) else []
+
+    lines: List[str] = []
+    for page in preview_pages:
+        if not isinstance(page, dict):
+            continue
+        page_name = _safe_text(page.get("name")) or _safe_text(page.get("id")) or "Страница"
+        route = _safe_text(page.get("route"))
+        sections = page.get("sections") if isinstance(page.get("sections"), list) else []
+        section_titles = [
+            f"{_safe_text(section.get('id'))}:{_safe_text(section.get('title'))}"
+            for section in sections
+            if isinstance(section, dict)
+        ]
+        lines.append(f"- PAGE {page_name} ({route}): sections=[{'; '.join(section_titles[:10])}]")
+
+    for page in schema_pages:
+        if not isinstance(page, dict):
+            continue
+        page_name = _safe_text(page.get("name")) or _safe_text(page.get("id")) or "Страница"
+        elements = page.get("elements") if isinstance(page.get("elements"), list) else []
+        element_titles = [
+            f"{_safe_text(element.get('type'))}:{_safe_text(element.get('label'))}"
+            for element in elements
+            if isinstance(element, dict)
+        ]
+        lines.append(f"- SCHEMA {page_name}: elements=[{'; '.join(element_titles[:10])}]")
+
+    return "\n".join(lines)
+
+
+def _build_edit_hints(edit_request: str, current_ui_preview: Dict[str, Any], current_ui_schema: Dict[str, Any]) -> str:
+    hints: List[str] = []
+
+    if _global_edit_requested(edit_request):
+        hints.append("- Правка явно глобальная: она должна затронуть все релевантные страницы/экраны, а не только один экран.")
+    if _style_edit_requested(edit_request):
+        hints.append("- Это stylistic/style edit: обновляй согласованно app.design и связанные action/button элементы, чтобы стиль был единым.")
+    if _delete_edit_requested(edit_request):
+        hints.append("- Это удаление: используй _delete=true или replace c пустым списком. Если нужно не возвращать авто-hero/auto-navigation, ставь disableAutoHero/disableAutoNavigation=true.")
+    if _reorder_edit_requested(edit_request):
+        hints.append("- Это перестановка: используй sections_order / elements_order и сохраняй остальные блоки страницы.")
+
+    outline = _page_outline(current_ui_preview, current_ui_schema)
+    if outline:
+        hints.append("- Ниже актуальный список страниц и блоков, чтобы точнее попасть в нужные секции.")
+        hints.append(outline)
+
+    return "\n".join(hints).strip()
+
+
+def _count_changed_pages(before_preview: Dict[str, Any], after_preview: Dict[str, Any]) -> int:
+    before_pages = before_preview.get("pages") if isinstance(before_preview.get("pages"), list) else []
+    after_pages = after_preview.get("pages") if isinstance(after_preview.get("pages"), list) else []
+    before_map = {
+        _normalized_name(page.get("id") or page.get("route") or page.get("name")): page
+        for page in before_pages
+        if isinstance(page, dict)
+    }
+    changed = 0
+    for page in after_pages:
+        if not isinstance(page, dict):
+            continue
+        key = _normalized_name(page.get("id") or page.get("route") or page.get("name"))
+        before_page = before_map.get(key)
+        if before_page != page:
+            changed += 1
+    return changed
+
+
+def _retry_needed(edit_request: str, current_ui_preview: Dict[str, Any], normalized_ui_preview: Dict[str, Any]) -> bool:
+    if normalized_ui_preview == current_ui_preview:
+        return True
+
+    if _global_edit_requested(edit_request):
+        current_pages = current_ui_preview.get("pages") if isinstance(current_ui_preview.get("pages"), list) else []
+        changed_pages = _count_changed_pages(current_ui_preview, normalized_ui_preview)
+        if len(current_pages) > 1 and changed_pages < 2:
+            return True
+
+    if _style_edit_requested(edit_request):
+        current_design = current_ui_preview.get("app", {}).get("design") if isinstance(current_ui_preview.get("app"), dict) else {}
+        next_design = normalized_ui_preview.get("app", {}).get("design") if isinstance(normalized_ui_preview.get("app"), dict) else {}
+        if current_design == next_design and _count_changed_pages(current_ui_preview, normalized_ui_preview) == 0:
+            return True
+
+    return False
 
 
 
@@ -606,11 +775,113 @@ def merge_ui_preview(current_ui_preview: Dict[str, Any], ui_preview_patch: Dict[
 
 
 
+def _normalize_string_list(value: Any) -> List[str]:
+    if not isinstance(value, list):
+        return []
+
+    result: List[str] = []
+    for item in value:
+        text = _safe_text(item)
+        if text and text not in result:
+            result.append(text)
+    return result
+
+
+
+def build_ui_edit_plan_prompt(
+    edit_request: str,
+    current_ui_schema: Dict[str, Any],
+    current_ui_preview: Dict[str, Any],
+) -> str:
+    return f"""
+Ты — AI-агент-планировщик правок UI-прототипа.
+
+Тебе нужно не вносить изменения самому, а сначала построить компактный и практичный план правки для другого AI-агента.
+План должен помочь точнее выполнять сложные запросы пользователя: массовые изменения, перестановки секций, удаление блоков, добавление новых частей сценария, глобальные stylistic updates.
+
+Важно:
+- Ориентируйся на реальный CURRENT_UI_PREVIEW и существующие страницы/секции.
+- Не придумывай новые страницы и блоки без необходимости.
+- Если запрос глобальный, явно пометь scope=global.
+- Если запрос локальный, укажи конкретные страницы и секции.
+- В must_preserve перечисли ограничения, которые нельзя нарушать.
+- В instructions распиши 3-8 коротких конкретных шагов, которые должен выполнить агент правок.
+- operations — список из коротких тегов, например: style, add, remove, reorder, content, navigation, filters, states, form, table.
+- Верни только JSON без markdown.
+
+Формат ответа:
+{json.dumps(EDIT_PLAN_RESPONSE_EXAMPLE, ensure_ascii=False, indent=2)}
+
+CURRENT_UI_SCHEMA:
+{json.dumps(current_ui_schema, ensure_ascii=False, indent=2)}
+
+CURRENT_UI_PREVIEW:
+{json.dumps(current_ui_preview, ensure_ascii=False, indent=2)}
+
+EDIT_REQUEST:
+{edit_request}
+"""
+
+
+
+def plan_ui_edit(
+    edit_request: str,
+    current_ui_schema: Dict[str, Any],
+    current_ui_preview: Dict[str, Any],
+) -> Dict[str, Any]:
+    fallback = {
+        "summary": _safe_text(edit_request),
+        "scope": "global" if _global_edit_requested(edit_request) else "local",
+        "operations": [],
+        "target_pages": [],
+        "target_sections": [],
+        "must_preserve": ["Сохранить остальные страницы и рабочие переходы, если пользователь явно не просил удалить их."],
+        "instructions": ["Выполнить запрос пользователя точечно и без пересборки прототипа с нуля."],
+    }
+
+    try:
+        raw_response = ask_openrouter(
+            build_ui_edit_plan_prompt(
+                edit_request=edit_request,
+                current_ui_schema=current_ui_schema,
+                current_ui_preview=current_ui_preview,
+            ),
+            temperature=0.0,
+        )
+        parsed = extract_json_from_text(raw_response)
+    except Exception:
+        return fallback
+
+    summary = _safe_text(parsed.get("summary")) or fallback["summary"]
+    scope = _safe_text(parsed.get("scope")).lower() or fallback["scope"]
+    if scope not in {"global", "page", "local"}:
+        scope = fallback["scope"]
+
+    operations = _normalize_string_list(parsed.get("operations"))
+    target_pages = _normalize_string_list(parsed.get("target_pages"))
+    target_sections = _normalize_string_list(parsed.get("target_sections"))
+    must_preserve = _normalize_string_list(parsed.get("must_preserve")) or fallback["must_preserve"]
+    instructions = _normalize_string_list(parsed.get("instructions")) or fallback["instructions"]
+
+    return {
+        "summary": summary,
+        "scope": scope,
+        "operations": operations,
+        "target_pages": target_pages,
+        "target_sections": target_sections,
+        "must_preserve": must_preserve,
+        "instructions": instructions,
+    }
+
+
+
 def build_ui_edit_prompt(
     edit_request: str,
     current_requirements: Dict[str, Any],
     current_ui_schema: Dict[str, Any],
     current_ui_preview: Dict[str, Any],
+    edit_plan: Dict[str, Any],
+    extra_hints: str = "",
 ) -> str:
     return f"""
 Ты — агент точечных правок UI-прототипа.
@@ -624,6 +895,8 @@ def build_ui_edit_prompt(
 
 Правила ответа:
 - Основа для изменений — CURRENT_UI_PREVIEW и CURRENT_UI_SCHEMA.
+- Сначала внимательно учти EDIT_PLAN: он уже разложил пользовательский запрос на целевые страницы, секции и ограничения.
+- Если EDIT_PLAN и EDIT_REQUEST конфликтуют, приоритет всегда у EDIT_REQUEST, но не игнорируй полезные ограничения из EDIT_PLAN.
 - Меняй только то, что следует из EDIT_REQUEST.
 - Если изменения локальные, возвращай только изменённые страницы/секции/элементы.
 - Если надо УДАЛИТЬ страницу, секцию, кнопку, action, поле, карточку или элемент ui_schema — верни соответствующий объект с "_delete": true.
@@ -658,26 +931,37 @@ CURRENT_UI_SCHEMA:
 CURRENT_UI_PREVIEW:
 {json.dumps(current_ui_preview, ensure_ascii=False, indent=2)}
 
+EDIT_PLAN:
+{json.dumps(edit_plan, ensure_ascii=False, indent=2)}
+
+EXTRA_HINTS:
+{extra_hints or "Нет дополнительных подсказок."}
+
 EDIT_REQUEST:
 {edit_request}
 """
 
 
 
-def apply_ui_edit(
+def _execute_edit_pass(
     edit_request: str,
     current_requirements: Dict[str, Any],
     current_ui_schema: Dict[str, Any],
     current_ui_preview: Dict[str, Any],
+    edit_plan: Dict[str, Any],
+    extra_hints: str,
+    temperature: float,
 ) -> Dict[str, Any]:
     prompt = build_ui_edit_prompt(
         edit_request=edit_request,
         current_requirements=current_requirements,
         current_ui_schema=current_ui_schema,
         current_ui_preview=current_ui_preview,
+        edit_plan=edit_plan,
+        extra_hints=extra_hints,
     )
 
-    raw_response = ask_openrouter(prompt, temperature=0.15)
+    raw_response = ask_openrouter(prompt, temperature=temperature)
     parsed = extract_json_from_text(raw_response)
 
     ui_schema_patch = parsed.get("ui_schema") if isinstance(parsed.get("ui_schema"), dict) else {}
@@ -690,7 +974,8 @@ def apply_ui_edit(
     validated_preview = validate_preview(merged_ui_preview)
     normalized_ui_preview = normalize_preview(validated_preview, normalized_ui_schema, current_requirements)
 
-    summary = parsed.get("summary") if isinstance(parsed.get("summary"), str) else "Готово: внёс правки в текущий прототип без потери остальных страниц."
+    summary = parsed.get("summary") if isinstance(parsed.get("summary"), str) else ""
+    summary = summary.strip() or _safe_text(edit_plan.get("summary")) or "Готово: внёс правки в текущий прототип без потери остальных страниц."
 
     return {
         "requirements": current_requirements,
@@ -698,3 +983,53 @@ def apply_ui_edit(
         "ui_preview": normalized_ui_preview,
         "summary": summary.strip() or "Готово: внёс правки в текущий прототип без потери остальных страниц.",
     }
+
+
+
+def apply_ui_edit(
+    edit_request: str,
+    current_requirements: Dict[str, Any],
+    current_ui_schema: Dict[str, Any],
+    current_ui_preview: Dict[str, Any],
+) -> Dict[str, Any]:
+    edit_plan = plan_ui_edit(edit_request, current_ui_schema, current_ui_preview)
+    extra_hints = _build_edit_hints(edit_request, current_ui_preview, current_ui_schema)
+
+    if edit_plan.get("instructions"):
+        extra_hints = (
+            (extra_hints + "\n" if extra_hints else "")
+            + "- Ниже план от AI-агента-планировщика, который помогает точнее выполнить сложную правку.\n"
+            + "\n".join(f"- PLAN: {item}" for item in edit_plan.get("instructions", []))
+        )
+
+    first_result = _execute_edit_pass(
+        edit_request=edit_request,
+        current_requirements=current_requirements,
+        current_ui_schema=current_ui_schema,
+        current_ui_preview=current_ui_preview,
+        edit_plan=edit_plan,
+        extra_hints=extra_hints,
+        temperature=0.15,
+    )
+
+    if not _retry_needed(edit_request, current_ui_preview, first_result["ui_preview"]):
+        return first_result
+
+    retry_hints = (
+        (extra_hints + "\n" if extra_hints else "")
+        + "- Первая попытка изменила прототип недостаточно точно. Во второй попытке обязательно внеси заметные реальные изменения согласно запросу.\n"
+        + "- Нельзя возвращать исходный прототип без изменений.\n"
+        + "- Если правка глобальная, затронь все релевантные страницы. Если это удаление, не допускай автоматического возвращения удалённых hero/navigation блоков."
+    )
+
+    retry_result = _execute_edit_pass(
+        edit_request=edit_request,
+        current_requirements=current_requirements,
+        current_ui_schema=current_ui_schema,
+        current_ui_preview=current_ui_preview,
+        edit_plan=edit_plan,
+        extra_hints=retry_hints,
+        temperature=0.05,
+    )
+
+    return retry_result

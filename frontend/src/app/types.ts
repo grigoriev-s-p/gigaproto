@@ -18,6 +18,9 @@ export interface ChatMessage {
 export interface RecommendationItem {
   title?: string;
   description?: string;
+  edit_prompt?: string;
+  scope?: string;
+  priority?: string;
 }
 
 export interface PreviewVariantSection {

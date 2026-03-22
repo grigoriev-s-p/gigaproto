@@ -206,14 +206,17 @@ def normalize_ui_schema(raw_schema: Dict[str, Any]) -> Dict[str, Any]:
 
             elements.append(normalized_element)
 
-        normalized_pages.append(
-            {
-                "id": page_id,
-                "name": page_name,
-                "route": page_route,
-                "elements": elements,
-            }
-        )
+        normalized_page = {
+            "id": page_id,
+            "name": page_name,
+            "route": page_route,
+            "elements": elements,
+        }
+
+        if isinstance(page.get("disableAutoNavigation"), bool):
+            normalized_page["disableAutoNavigation"] = page["disableAutoNavigation"]
+
+        normalized_pages.append(normalized_page)
 
     if not normalized_pages:
         normalized_pages = [
@@ -243,8 +246,9 @@ def normalize_ui_schema(raw_schema: Dict[str, Any]) -> Dict[str, Any]:
             element.get("type") == "button" and _resolve_route_target(_safe_text(element.get("action"), ""), normalized_pages, page["route"]) != page["route"]
             for element in page["elements"]
         )
+        disable_auto_navigation = bool(page.get("disableAutoNavigation"))
 
-        if len(normalized_pages) > 1 and not has_navigation:
+        if len(normalized_pages) > 1 and not has_navigation and not disable_auto_navigation:
             next_page = normalized_pages[(page_index + 1) % len(normalized_pages)]
             if next_page["route"] != page["route"]:
                 page["elements"].append(

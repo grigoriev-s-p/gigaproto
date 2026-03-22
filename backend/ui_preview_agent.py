@@ -715,6 +715,8 @@ def normalize_preview(preview: Dict[str, Any], ui_schema: Dict[str, Any], requir
         page_name = _safe_text(page.get("name"), fallback_descriptor["name"])
         route = _find_target(_safe_text(page.get("route"), fallback_descriptor["route"]), pages_index, fallback_descriptor["route"])
         sections_raw = page.get("sections") if isinstance(page.get("sections"), list) else []
+        disable_auto_navigation = bool(page.get("disableAutoNavigation"))
+        disable_auto_hero = bool(page.get("disableAutoHero"))
 
         normalized_sections: List[Dict[str, Any]] = []
 
@@ -813,7 +815,7 @@ def normalize_preview(preview: Dict[str, Any], ui_schema: Dict[str, Any], requir
 
             normalized_sections.append(normalized_section)
 
-        if not normalized_sections or normalized_sections[0].get("kind") != "hero":
+        if not disable_auto_hero and (not normalized_sections or normalized_sections[0].get("kind") != "hero"):
             normalized_sections.insert(
                 0,
                 {
@@ -831,7 +833,7 @@ def normalize_preview(preview: Dict[str, Any], ui_schema: Dict[str, Any], requir
             for action in section.get("actions", []) if isinstance(section, dict)
         )
 
-        if len(pages_index) > 1 and not has_cross_navigation:
+        if len(pages_index) > 1 and not has_cross_navigation and not disable_auto_navigation:
             normalized_sections.append(
                 {
                     "id": f"{page_id}-navigation",
@@ -850,15 +852,19 @@ def normalize_preview(preview: Dict[str, Any], ui_schema: Dict[str, Any], requir
                 }
             )
 
-        normalized_pages.append(
-            {
-                "id": page_id,
-                "name": page_name,
-                "route": route,
-                "summary": _safe_text(page.get("summary"), f"Страница {page_name} с рабочими переходами и единым визуальным стилем."),
-                "sections": normalized_sections,
-            }
-        )
+        normalized_page = {
+            "id": page_id,
+            "name": page_name,
+            "route": route,
+            "summary": _safe_text(page.get("summary"), f"Страница {page_name} с рабочими переходами и единым визуальным стилем."),
+            "sections": normalized_sections,
+        }
+        if disable_auto_navigation:
+            normalized_page["disableAutoNavigation"] = True
+        if disable_auto_hero:
+            normalized_page["disableAutoHero"] = True
+
+        normalized_pages.append(normalized_page)
 
     if not normalized_pages:
         return build_fallback_preview(ui_schema, requirements)

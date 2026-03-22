@@ -86,13 +86,31 @@ function getInitialTheme(): ThemeMode {
 function normalizeRecommendationItem(item: RecommendationItem, index: number): string | null {
   const title = String(item.title || '').trim();
   const description = String(item.description || '').trim();
+  const editPrompt = String(item.edit_prompt || '').trim();
+  const scope = String(item.scope || '').trim();
+  const priority = String(item.priority || '').trim();
 
-  if (!title && !description) {
+  if (!title && !description && !editPrompt) {
     return null;
   }
 
   const safeTitle = title || `Идея ${index + 1}`;
-  return description ? `${index + 1}. ${safeTitle} — ${description}` : `${index + 1}. ${safeTitle}`;
+  const lines = [`${index + 1}. ${safeTitle}`];
+
+  if (scope) {
+    lines.push(`Где: ${scope}`);
+  }
+  if (description) {
+    lines.push(`Почему это важно: ${description}`);
+  }
+  if (editPrompt) {
+    lines.push(`Что сделать: ${editPrompt}`);
+  }
+  if (priority) {
+    lines.push(`Приоритет: ${priority}`);
+  }
+
+  return lines.join('\n');
 }
 
 function buildRecommendationText(recommendations: RecommendationItem[]): string {
@@ -106,10 +124,10 @@ function buildRecommendationText(recommendations: RecommendationItem[]): string 
   }
 
   return [
-    'Я проанализировал готовый UI и вот что можно улучшить:',
-    ...lines,
+    'AI-агент проанализировал текущий интерфейс и предлагает точечные улучшения:',
     '',
-    'Если согласен, просто напиши: «да, сделай так». Если хочешь свои правки, они будут в приоритете над моими рекомендациями.',
+    ...lines.flatMap((item) => [item, '']),
+    'Если согласен, просто напиши: «да, сделай так». Можно точечно: «примени 1 и 3 рекомендацию». Если напишешь свои правки, они будут приоритетнее рекомендаций.',
   ].join('\n');
 }
 
@@ -118,6 +136,9 @@ function recommendationFingerprint(recommendations: RecommendationItem[]): strin
     recommendations.map((item) => ({
       title: String(item.title || '').trim(),
       description: String(item.description || '').trim(),
+      edit_prompt: String(item.edit_prompt || '').trim(),
+      scope: String(item.scope || '').trim(),
+      priority: String(item.priority || '').trim(),
     })),
   );
 }

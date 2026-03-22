@@ -23,7 +23,6 @@ function formatMessageText(value: unknown): string {
 export function ChatMessage({ message }: ChatMessageProps) {
   const rawText = (message as ChatMessageType & { text?: unknown }).text;
   const text = formatMessageText(rawText);
-  const isStructured = typeof rawText === 'object' && rawText !== null;
 
   return (
     <article className={`message-bubble ${message.role}`}>
@@ -40,7 +39,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
 
       <p
         style={{
-          whiteSpace: isStructured ? 'pre-wrap' : 'normal',
+          whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',
         }}
       >
