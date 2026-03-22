@@ -16,11 +16,19 @@ export interface ChatMessage {
 }
 
 export interface RecommendationItem {
+  id?: string;
+  priority?: 'high' | 'medium' | 'low' | string;
   title?: string;
   description?: string;
+<<<<<<< HEAD
   edit_prompt?: string;
   scope?: string;
   priority?: string;
+=======
+  rationale?: string;
+  impact?: string;
+  apply_prompt?: string;
+>>>>>>> 4568051 (Финальная версия для хакатона)
 }
 
 export interface PreviewVariantSection {

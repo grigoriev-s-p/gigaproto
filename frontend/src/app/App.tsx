@@ -83,18 +83,33 @@ function getInitialTheme(): ThemeMode {
   return stored === 'light' ? 'light' : 'dark';
 }
 
+function formatRecommendationPriority(priority: RecommendationItem['priority']): string {
+  const normalized = String(priority || '').trim().toLowerCase();
+  if (normalized === 'high') return 'Высокий приоритет';
+  if (normalized === 'low') return 'Низкий приоритет';
+  return 'Средний приоритет';
+}
+
 function normalizeRecommendationItem(item: RecommendationItem, index: number): string | null {
   const title = String(item.title || '').trim();
   const description = String(item.description || '').trim();
+<<<<<<< HEAD
   const editPrompt = String(item.edit_prompt || '').trim();
   const scope = String(item.scope || '').trim();
   const priority = String(item.priority || '').trim();
 
   if (!title && !description && !editPrompt) {
+=======
+  const rationale = String(item.rationale || '').trim();
+  const impact = String(item.impact || '').trim();
+
+  if (!title && !description && !rationale) {
+>>>>>>> 4568051 (Финальная версия для хакатона)
     return null;
   }
 
   const safeTitle = title || `Идея ${index + 1}`;
+<<<<<<< HEAD
   const lines = [`${index + 1}. ${safeTitle}`];
 
   if (scope) {
@@ -108,6 +123,20 @@ function normalizeRecommendationItem(item: RecommendationItem, index: number): s
   }
   if (priority) {
     lines.push(`Приоритет: ${priority}`);
+=======
+  const lines = [`${index + 1}. [${formatRecommendationPriority(item.priority)}] ${safeTitle}`];
+
+  if (description) {
+    lines.push(`Что изменить: ${description}`);
+  }
+
+  if (rationale) {
+    lines.push(`Почему это важно: ${rationale}`);
+  }
+
+  if (impact) {
+    lines.push(`Эффект: ${impact}`);
+>>>>>>> 4568051 (Финальная версия для хакатона)
   }
 
   return lines.join('\n');
@@ -124,23 +153,61 @@ function buildRecommendationText(recommendations: RecommendationItem[]): string 
   }
 
   return [
+<<<<<<< HEAD
     'AI-агент проанализировал текущий интерфейс и предлагает точечные улучшения:',
     '',
     ...lines.flatMap((item) => [item, '']),
     'Если согласен, просто напиши: «да, сделай так». Можно точечно: «примени 1 и 3 рекомендацию». Если напишешь свои правки, они будут приоритетнее рекомендаций.',
+=======
+    'Я проанализировал именно текущий прототип и подготовил конкретные правки:',
+    '',
+    ...lines,
+    '',
+    'Можно ответить «да, сделай так», и я применю эти рекомендации как реальные изменения текущего UI. Если напишешь свои правки, они будут важнее моих.',
+>>>>>>> 4568051 (Финальная версия для хакатона)
   ].join('\n');
 }
 
 function recommendationFingerprint(recommendations: RecommendationItem[]): string {
   return JSON.stringify(
     recommendations.map((item) => ({
+      id: String(item.id || '').trim(),
+      priority: String(item.priority || '').trim(),
       title: String(item.title || '').trim(),
       description: String(item.description || '').trim(),
+<<<<<<< HEAD
       edit_prompt: String(item.edit_prompt || '').trim(),
       scope: String(item.scope || '').trim(),
       priority: String(item.priority || '').trim(),
+=======
+      rationale: String(item.rationale || '').trim(),
+      impact: String(item.impact || '').trim(),
+      apply_prompt: String(item.apply_prompt || '').trim(),
+>>>>>>> 4568051 (Финальная версия для хакатона)
     })),
   );
+}
+
+function sanitizeFilename(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-zа-я0-9]+/gi, '-')
+    .replace(/^-+|-+$/g, '') || 'gigaproto-interface';
+}
+
+function extractFilenameFromDisposition(disposition: string | null): string | null {
+  if (!disposition) {
+    return null;
+  }
+
+  const utfMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utfMatch?.[1]) {
+    return decodeURIComponent(utfMatch[1]);
+  }
+
+  const plainMatch = disposition.match(/filename="?([^";]+)"?/i);
+  return plainMatch?.[1] ? plainMatch[1] : null;
 }
 
 export function App() {
@@ -155,6 +222,7 @@ export function App() {
   const [uiSchema, setUiSchema] = useState<UiSchema | null>(null);
   const [pendingRecommendations, setPendingRecommendations] = useState<RecommendationItem[]>([]);
   const [lastRecommendationFingerprint, setLastRecommendationFingerprint] = useState('');
+  const [isDownloadingArchive, setIsDownloadingArchive] = useState(false);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -208,10 +276,10 @@ export function App() {
     setLastRecommendationFingerprint('');
   }
 
-  async function handleGenerate(trimmed: string) {
+  async function handleGenerate(trimmed: string, attachmentsSnapshot: AttachmentItem[]) {
     const formData = new FormData();
     formData.append('prompt', trimmed);
-    attachments.forEach((item) => formData.append('files', item.file));
+    attachmentsSnapshot.forEach((item) => formData.append('files', item.file));
 
     const response = await fetch(`${API_URL}/generate`, {
       method: 'POST',
@@ -234,7 +302,6 @@ export function App() {
     };
 
     setMessages((prev: ChatMessage[]) => [...prev, nextAgentMessage]);
-    setAttachments([]);
 
     const recommendations = payload.data.recommendations ?? [];
     if (recommendations.length > 0) {
@@ -286,9 +353,72 @@ export function App() {
     }
   }
 
+  async function handleDownloadArchive() {
+    if (!preview || !uiSchema || !requirements) {
+      return;
+    }
+
+    setIsDownloadingArchive(true);
+
+    try {
+      const response = await fetch(`${API_URL}/export-interface-archive`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          requirements,
+          ui_schema: uiSchema,
+          ui_preview: preview,
+        }),
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Не удалось скачать архив интерфейса';
+
+        try {
+          const errorPayload = (await response.json()) as { error?: string };
+          if (errorPayload?.error) {
+            errorMessage = errorPayload.error;
+          }
+        } catch {
+          // ignore non-JSON error bodies
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      const blob = await response.blob();
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const fileName = extractFilenameFromDisposition(contentDisposition) ?? `${sanitizeFilename(preview.app.title || 'gigaproto-interface')}.zip`;
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = downloadUrl;
+      anchor.download = fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: 'system',
+          text: error instanceof Error ? error.message : 'Не удалось скачать архив интерфейса',
+          createdAt: formatNow(),
+        },
+      ]);
+    } finally {
+      setIsDownloadingArchive(false);
+    }
+  }
+
   async function handleSend() {
     const trimmed = draft.trim();
-    if (!trimmed && attachments.length === 0) {
+    const attachmentsSnapshot = [...attachments];
+
+    if (!trimmed && attachmentsSnapshot.length === 0) {
       return;
     }
 
@@ -297,20 +427,21 @@ export function App() {
       role: 'user',
       text: trimmed || 'Прикреплены файлы без текста',
       createdAt: formatNow(),
-      attachments,
+      attachments: attachmentsSnapshot,
     };
+
+    const shouldEdit = Boolean(preview && requirements && uiSchema) && attachmentsSnapshot.length === 0 && Boolean(trimmed);
 
     setMessages((prev: ChatMessage[]) => [...prev, nextUserMessage]);
     setDraft('');
+    setAttachments([]);
     setIsThinking(true);
 
     try {
-      const shouldEdit = Boolean(preview && requirements && uiSchema) && attachments.length === 0 && Boolean(trimmed);
-
       if (shouldEdit) {
         await handleEdit(trimmed);
       } else {
-        await handleGenerate(trimmed);
+        await handleGenerate(trimmed, attachmentsSnapshot);
       }
     } catch (error) {
       const nextErrorMessage: ChatMessage = {
@@ -338,7 +469,9 @@ export function App() {
             preview={preview}
             isThinking={isThinking}
             activePage={activePage}
+            isDownloadingArchive={isDownloadingArchive}
             onSelectPage={setActivePageId}
+            onDownloadArchive={handleDownloadArchive}
           />
         </section>
 

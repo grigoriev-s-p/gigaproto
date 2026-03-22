@@ -23,6 +23,13 @@ ALLOWED_DECISIONS = {
     "user_edit_only",
 }
 
+<<<<<<< HEAD
+=======
+APPROVAL_PREFIX_RE = re.compile(
+    r"^(?:ну\s+)?(?:да|давай|ок(?:ей)?|хорошо|согласен|подходит|можно|погнали)(?:\s*[,:-]?\s*сделай\s+так|\s*[,:-]?\s*применяй)?(?:\s*[,:-]\s*|\s+и\s+|\s+но\s+)?",
+    re.IGNORECASE,
+)
+>>>>>>> 4568051 (Финальная версия для хакатона)
 
 def _safe_text(value: Any) -> str:
     if value is None:
@@ -49,11 +56,51 @@ def _recommendation_instruction(item: dict[str, Any], index: int) -> str:
 
 
 def _recommendations_to_text(recommendations: list[dict[str, Any]]) -> str:
+<<<<<<< HEAD
     return "\n\n".join(
         _recommendation_instruction(item, index)
         for index, item in enumerate(recommendations, start=1)
         if isinstance(item, dict)
     )
+=======
+    lines: list[str] = []
+    for index, item in enumerate(recommendations, start=1):
+        if not isinstance(item, dict):
+            continue
+        title = str(item.get("title") or f"Идея {index}").strip()
+        description = str(item.get("description") or "").strip()
+        rationale = str(item.get("rationale") or "").strip()
+        apply_prompt = str(item.get("apply_prompt") or item.get("edit_prompt") or "").strip()
+
+        parts = [f"{index}. {title}"]
+        if description:
+            parts.append(f"Что улучшить: {description}")
+        if rationale:
+            parts.append(f"Почему: {rationale}")
+        if apply_prompt:
+            parts.append(f"Как изменить: {apply_prompt}")
+        lines.append("\n".join(parts))
+    return "\n\n".join(lines)
+
+
+
+def _recommendations_to_apply_instructions(recommendations: list[dict[str, Any]]) -> str:
+    lines: list[str] = []
+    for index, item in enumerate(recommendations, start=1):
+        if not isinstance(item, dict):
+            continue
+        apply_prompt = str(item.get("apply_prompt") or item.get("edit_prompt") or "").strip()
+        if apply_prompt:
+            lines.append(f"{index}. {apply_prompt}")
+            continue
+
+        title = str(item.get("title") or f"Идея {index}").strip()
+        description = str(item.get("description") or "").strip()
+        combined = ": ".join(part for part in [title, description] if part)
+        if combined:
+            lines.append(f"{index}. {combined}")
+    return "\n".join(lines)
+>>>>>>> 4568051 (Финальная версия для хакатона)
 
 
 def _normalize_indexes(indexes: Any, total: int) -> list[int]:
@@ -174,7 +221,12 @@ def resolve_edit_request(user_edit: str, pending_recommendations: list[dict[str,
             "summary": summary or "Понял, рекомендации не применяю. Жду твоих точечных правок к текущему прототипу.",
         }
 
+<<<<<<< HEAD
     if decision == "apply_recommendations":
+=======
+    if has_pending and normalized in PURE_APPROVAL_VALUES:
+        recommendation_block = _recommendations_to_apply_instructions(recommendations)
+>>>>>>> 4568051 (Финальная версия для хакатона)
         return {
             "mode": "apply_recommendations",
             "edit_request": (
@@ -198,6 +250,7 @@ def resolve_edit_request(user_edit: str, pending_recommendations: list[dict[str,
             "dismissed_recommendations": False,
         }
 
+<<<<<<< HEAD
     if decision == "apply_recommendations_with_user_edit":
         return {
             "mode": "apply_recommendations_with_user_edit",
@@ -210,6 +263,23 @@ def resolve_edit_request(user_edit: str, pending_recommendations: list[dict[str,
             "applied_recommendations": True,
             "dismissed_recommendations": False,
         }
+=======
+        approved_prefix = _strip_prefix(text, APPROVAL_PREFIX_RE)
+        if approved_prefix != text and approved_prefix:
+            recommendation_block = _recommendations_to_apply_instructions(recommendations)
+            return {
+                "mode": "apply_recommendations_with_user_edit",
+                "edit_request": (
+                    "Сначала учти следующие ранее предложенные рекомендации, "
+                    "а затем дополнительно выполни явные указания пользователя. "
+                    "Если есть конфликт, приоритет всегда у явных указаний пользователя.\n\n"
+                    f"РЕКОМЕНДАЦИИ:\n{recommendation_block}\n\n"
+                    f"УКАЗАНИЯ ПОЛЬЗОВАТЕЛЯ:\n{approved_prefix}"
+                ),
+                "applied_recommendations": True,
+                "dismissed_recommendations": False,
+            }
+>>>>>>> 4568051 (Финальная версия для хакатона)
 
     return {
         "mode": "user_edit_only",

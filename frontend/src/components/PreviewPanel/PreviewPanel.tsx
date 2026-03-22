@@ -1,4 +1,4 @@
-import { Layers3, Palette } from 'lucide-react';
+import { Download, Layers3, Palette } from 'lucide-react';
 import type { GeneratedPage, GeneratedUiPreview } from '../../app/types';
 import { GeneratedPreview } from '../GeneratedPreview/GeneratedPreview';
 
@@ -6,10 +6,19 @@ interface PreviewPanelProps {
   preview: GeneratedUiPreview | null;
   isThinking: boolean;
   activePage?: GeneratedPage;
+  isDownloadingArchive?: boolean;
   onSelectPage: (id: string) => void;
+  onDownloadArchive: () => void;
 }
 
-export function PreviewPanel({ preview, isThinking, activePage, onSelectPage }: PreviewPanelProps) {
+export function PreviewPanel({
+  preview,
+  isThinking,
+  activePage,
+  isDownloadingArchive,
+  onSelectPage,
+  onDownloadArchive,
+}: PreviewPanelProps) {
   if (!preview || !activePage) {
     return <PreviewEmptyState isThinking={isThinking} />;
   }
@@ -74,6 +83,18 @@ export function PreviewPanel({ preview, isThinking, activePage, onSelectPage }: 
               Стиль: {preview.app.design.preset}
             </span>
           ) : null}
+        </div>
+
+        <div className="notes-panel__actions">
+          <button
+            className="primary-button"
+            type="button"
+            onClick={onDownloadArchive}
+            disabled={isDownloadingArchive}
+          >
+            <Download size={16} />
+            {isDownloadingArchive ? 'Собираю архив…' : 'Скачать архив интерфейса'}
+          </button>
         </div>
       </div>
     </div>

@@ -439,6 +439,12 @@ button {
   gap: 10px;
 }
 
+.notes-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .chip-row {
   display: flex;
   flex-wrap: wrap;
@@ -605,6 +611,14 @@ button {
 .composer-send:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.primary-button:disabled,
+.ghost-button:disabled,
+.icon-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .composer-textarea {
