@@ -809,14 +809,10 @@ async def generate(
         requirements_json = txt_agent(combined_text)
         ui_schema = ui_schema_agent(requirements_json)
         ui_preview = ui_preview_agent(ui_schema, requirements_json)
-<<<<<<< HEAD
-        recommendations = build_recommendations(requirements_json, ui_schema, ui_preview)
-=======
         try:
             recommendations = build_recommendations(requirements_json, ui_schema, ui_preview)
         except Exception:
             recommendations = []
->>>>>>> 4568051 (Финальная версия для хакатона)
 
         return {
             "ok": True,
@@ -873,14 +869,10 @@ async def edit(
             current_ui_preview=current_preview_dict,
         )
 
-<<<<<<< HEAD
-        refreshed_recommendations = build_recommendations(result["requirements"], result["ui_schema"], result["ui_preview"])
-=======
         try:
             refreshed_recommendations = build_recommendations(result["requirements"], result["ui_schema"], result["ui_preview"])
         except Exception:
             refreshed_recommendations = []
->>>>>>> 4568051 (Финальная версия для хакатона)
 
         return {
             "ok": True,

@@ -93,38 +93,21 @@ function formatRecommendationPriority(priority: RecommendationItem['priority']):
 function normalizeRecommendationItem(item: RecommendationItem, index: number): string | null {
   const title = String(item.title || '').trim();
   const description = String(item.description || '').trim();
-<<<<<<< HEAD
-  const editPrompt = String(item.edit_prompt || '').trim();
+  const editPrompt = String(item.edit_prompt || item.apply_prompt || '').trim();
   const scope = String(item.scope || '').trim();
-  const priority = String(item.priority || '').trim();
-
-  if (!title && !description && !editPrompt) {
-=======
   const rationale = String(item.rationale || '').trim();
   const impact = String(item.impact || '').trim();
 
-  if (!title && !description && !rationale) {
->>>>>>> 4568051 (Финальная версия для хакатона)
+  if (!title && !description && !editPrompt && !rationale) {
     return null;
   }
 
   const safeTitle = title || `Идея ${index + 1}`;
-<<<<<<< HEAD
-  const lines = [`${index + 1}. ${safeTitle}`];
+  const lines = [`${index + 1}. [${formatRecommendationPriority(item.priority)}] ${safeTitle}`];
 
   if (scope) {
     lines.push(`Где: ${scope}`);
   }
-  if (description) {
-    lines.push(`Почему это важно: ${description}`);
-  }
-  if (editPrompt) {
-    lines.push(`Что сделать: ${editPrompt}`);
-  }
-  if (priority) {
-    lines.push(`Приоритет: ${priority}`);
-=======
-  const lines = [`${index + 1}. [${formatRecommendationPriority(item.priority)}] ${safeTitle}`];
 
   if (description) {
     lines.push(`Что изменить: ${description}`);
@@ -136,7 +119,10 @@ function normalizeRecommendationItem(item: RecommendationItem, index: number): s
 
   if (impact) {
     lines.push(`Эффект: ${impact}`);
->>>>>>> 4568051 (Финальная версия для хакатона)
+  }
+
+  if (editPrompt) {
+    lines.push(`Что сделать: ${editPrompt}`);
   }
 
   return lines.join('\n');
@@ -153,18 +139,11 @@ function buildRecommendationText(recommendations: RecommendationItem[]): string 
   }
 
   return [
-<<<<<<< HEAD
-    'AI-агент проанализировал текущий интерфейс и предлагает точечные улучшения:',
-    '',
-    ...lines.flatMap((item) => [item, '']),
-    'Если согласен, просто напиши: «да, сделай так». Можно точечно: «примени 1 и 3 рекомендацию». Если напишешь свои правки, они будут приоритетнее рекомендаций.',
-=======
-    'Я проанализировал именно текущий прототип и подготовил конкретные правки:',
+    'Я проанализировал текущий прототип и подготовил конкретные правки:',
     '',
     ...lines,
     '',
-    'Можно ответить «да, сделай так», и я применю эти рекомендации как реальные изменения текущего UI. Если напишешь свои правки, они будут важнее моих.',
->>>>>>> 4568051 (Финальная версия для хакатона)
+    'Можно ответить «да, сделай так», и я применю эти рекомендации как реальные изменения текущего UI. Если напишешь свои правки, они будут важнее рекомендаций.',
   ].join('\n');
 }
 
@@ -175,15 +154,11 @@ function recommendationFingerprint(recommendations: RecommendationItem[]): strin
       priority: String(item.priority || '').trim(),
       title: String(item.title || '').trim(),
       description: String(item.description || '').trim(),
-<<<<<<< HEAD
       edit_prompt: String(item.edit_prompt || '').trim(),
       scope: String(item.scope || '').trim(),
-      priority: String(item.priority || '').trim(),
-=======
       rationale: String(item.rationale || '').trim(),
       impact: String(item.impact || '').trim(),
       apply_prompt: String(item.apply_prompt || '').trim(),
->>>>>>> 4568051 (Финальная версия для хакатона)
     })),
   );
 }

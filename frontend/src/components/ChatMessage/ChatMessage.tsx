@@ -23,10 +23,6 @@ function formatMessageText(value: unknown): string {
 export function ChatMessage({ message }: ChatMessageProps) {
   const rawText = (message as ChatMessageType & { text?: unknown }).text;
   const text = formatMessageText(rawText);
-<<<<<<< HEAD
-
-=======
->>>>>>> 4568051 (Финальная версия для хакатона)
   return (
     <article className={`message-bubble ${message.role}`}>
       <div className="message-bubble__meta">

@@ -7,10 +7,7 @@ SESSION = requests.Session()
 
 
 def ask_openrouter(prompt: str, model: str | None = None, temperature: float = 0.1) -> str:
-    api_key = "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"
-    if not api_key:
-        raise ValueError("OPENROUTER_API_KEY не найден в переменных окружения")
-
+    api_key = "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"
     response = SESSION.post(
         OPENROUTER_API_URL,
         headers={
